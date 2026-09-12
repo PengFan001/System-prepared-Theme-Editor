@@ -44,6 +44,28 @@ node core/cli.js new <目录> --name 名称 --type 0 --color-mode mono --brand t
 node core/cli.js list:check <清单文件>     # 适配清单体检
 ```
 
+## 适配清单接入（多台电脑 / 新同事上手）
+
+适配清单（应用名 ↔ 包名 ↔ 分类）由项目方提供，**不入仓库**（含内部包名信息）。拿到清单文件后：
+
+```bash
+# 1. 放入项目根目录的 lists/ 文件夹（该目录已被 .gitignore 排除，不会误提交）
+#    例如：lists/adaptation-list.json
+
+# 2. 体检清单（可选）：查看 name 空缺统计、包名重复、必须适配但无名条目
+node core/cli.js list:check lists/adaptation-list.json
+
+# 3. 资源匹配：将设计师素材目录与清单匹配，输出归位方案、歧义/冲突与覆盖率报告
+node core/cli.js map lists/adaptation-list.json <素材目录>
+```
+
+说明：
+
+- 没有清单时，新建项目向导、校验、打包**均不受影响**——清单只影响「资源自动归位」和「覆盖率报告」
+- 有样本主题包时可用 `list:init` 反向生成清单：
+  `node core/cli.js list:init <样本目录...> -o lists/adaptation-list.json -p transsion`
+- 界面版的清单自动发现与绑定（打开项目自动识别 `lists/*.json`、清单浏览、拖图归位、实时覆盖率）将在 P1③ 资源导入中提供
+
 ## 目录结构
 
 ```
@@ -62,5 +84,5 @@ docs/       # 格式规范与设计师交付规范
 ## 注意事项
 
 - **兜底模板三件套已随仓库提供**（`assets/templates/`，当前为临时资源，正式设计稿到位后替换该目录）
-- **`themeSource/`（主题资源样本）与 `lists/`（适配清单）不入库**：将样本主题包放入项目根目录的 `themeSource/` 可用于回归测试（缺失不影响功能）；适配清单放入 `lists/` 后即可使用资源映射与覆盖率功能
+- **`themeSource/`（主题资源样本）与 `lists/`（适配清单）不入库**（涉内部资源信息），接入方式见上文「适配清单接入」
 - 打包产物 `.xth` 消费端为传音系统主题平台
