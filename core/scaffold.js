@@ -130,4 +130,12 @@ function loadProject(dir) {
   return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null;
 }
 
-module.exports = { createProject, loadProject };
+/** 关联/更新项目的适配清单（写入 .themeproject.json 的 listFile） */
+function bindList(dir, listFile) {
+  const meta = loadProject(dir) || { tool: 'System-prepared Theme Editor' };
+  meta.listFile = listFile;
+  fs.writeFileSync(path.join(dir, '.themeproject.json'), JSON.stringify(meta, null, 2) + '\n');
+  return meta;
+}
+
+module.exports = { createProject, loadProject, bindList };

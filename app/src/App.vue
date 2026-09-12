@@ -138,6 +138,135 @@
       </div>
     </div>
 
+    <!-- ========== 适配清单与覆盖率 ========== -->
+    <div class="panel">
+      <h2>适配清单</h2>
+      <div class="list-toolbar">
+        <select v-model="listFile" @change="onListChange" class="sel">
+          <option :value="null">未关联清单</option>
+          <option v-for="f in listFiles" :key="f" :value="f">{{ baseName(f) }}</option>
+        </select>
+        <button class="btn" @click="pickListFile">选择清单文件…</button>
+        <span v-if="listFile" class="dir-line" style="display:inline">{{ listFile }}</span>
+      </div>
+
+      <template v-if="cov">
+        <div class="cov-bar" :title="`已适配 ${cov.summary.full} / 共 ${cov.summary.total}`">
+          <div class="cov-full" :style="{ width: pct(cov.summary.full) }"></div>
+          <div class="cov-partial" :style="{ width: pct(cov.summary.partial) }"></div>
+        </div>
+        <div class="stats">
+          已适配 {{ cov.summary.full }} · 部分 {{ cov.summary.partial }} · 未适配 {{ cov.summary.none }} · 共 {{ cov.summary.total }}
+          <span v-if="cov.summary.requiredMissing" class="req-missing">必须适配未完成 {{ cov.summary.requiredMissing }}</span>
+        </div>
+
+        <div class="list-toolbar">
+          <input v-model="search" class="sel" placeholder="搜索应用名 / 包名" style="flex:1" />
+          <select v-model="filterCat" class="sel">
+            <option value="">全部类型</option>
+            <option value="system">系统</option>
+            <option value="third-party">三方</option>
+            <option value="special">特殊</option>
+          </select>
+          <select v-model="filterStatus" class="sel">
+            <option value="">全部状态</option>
+            <option value="none">未适配</option>
+            <option value="partial">部分适配</option>
+            <option value="full">已适配</option>
+          </select>
+        </div>
+
+        <div class="app-table">
+          <div v-for="a in filteredApps" :key="a.package" class="app-row">
+            <span class="app-status" :class="a.status">{{ statusLabel(a.status) }}</span>
+            <span class="app-name">{{ a.name || '—' }}<i v-if="a.required" class="req">必</i></span>
+            <span class="app-pkg">{{ a.package }}</span>
+            <span class="app-cat">{{ catLabel(a.category) }}</span>
+            <span class="app-missing">{{ a.status !== 'full' ? '缺：' + a.missing.join('、') : '' }}</span>
+          </div>
+          <div v-if="!filteredApps.length" class="form-note">没有符合条件的条目</div>
+        </div>
+      </template>
+      <div v-else class="form-note">
+        未关联适配清单。将清单 JSON 放入项目 lists/ 目录后自动出现在下拉框中；也可直接选择清单文件。
+        关联后可使用覆盖率统计与资源自动归位。
+      </div>
+    </div>
+
+    <!-- ========== 资源导入 ========== -->
+    <div v-if="listFile" class="panel">
+      <h2>资源导入</h2>
+      <button class="btn primary" @click="pickAssetDir" :disabled="importing">选择素材文件夹…</button>
+      <span v-if="assetDir" class="dir-line" style="display:inline">{{ assetDir }}</span>
+
+      <template v-if="match">
+        <div class="stats" style="margin-top:10px">
+          可导入 {{ importPlan.length }} 项
+          <template v-if="match.ambiguous.length"> · 待确认 {{ match.ambiguous.length }}</template>
+          <template v-if="match.conflicts.length"> · 图层冲突 {{ match.conflicts.length }}</template>
+          <template v-if="match.unmatched.length"> · 不在清单内 {{ match.unmatched.length }}</template>
+        </div>
+
+        <div v-if="singleLayerFiles.length" class="sub-block">
+          <h3>待指定图层（自适应主题需要分层，请指定每张单图作为哪一层）</h3>
+          <div v-for="m in singleLayerFiles" :key="m.file" class="confirm-row">
+            <span class="app-name">{{ m.file }} → {{ m.package }}</span>
+            <select v-model="sgChoices[m.file]" class="sel">
+              <option value="top">前景层（_top）</option>
+              <option value="bg">背景层（_bg）</option>
+              <option value="">不导入</option>
+            </select>
+          </div>
+        </div>
+
+        <div v-if="match.ambiguous.length" class="sub-block">
+          <h3>待确认（文件名有歧义，请选择对应应用）</h3>
+          <div v-for="am in match.ambiguous" :key="am.file" class="confirm-row">
+            <span class="app-name">{{ am.file }}</span>
+            <select v-model="amChoices[am.file]" class="sel">
+              <option value="">不导入</option>
+              <option v-for="c in am.candidates" :key="c" :value="pkgOf(c)">{{ c }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div v-if="match.conflicts.length" class="sub-block">
+          <h3>图层冲突（同一应用同一层有多个文件，请选择保留）</h3>
+          <div v-for="cf in match.conflicts" :key="cf.package + cf.layer" class="confirm-row">
+            <span class="app-name">{{ cf.package }} · {{ layerLabel(cf.layer) }}</span>
+            <select v-model="cfChoices[cf.package + '|' + cf.layer]" class="sel">
+              <option v-for="f in cf.files" :key="f" :value="f">{{ f }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div v-if="match.unmatched.length" class="sub-block">
+          <h3>不在清单内（不会导入）</h3>
+          <div class="form-note">{{ match.unmatched.join('、') }}</div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button class="btn primary" :disabled="!importPlan.length || importing" @click="doImport">
+            {{ importing ? '导入中…' : `导入 ${importPlan.length} 项到 icons/` }}
+          </button>
+          <button class="btn" @click="match = null">取消</button>
+        </div>
+      </template>
+
+      <div v-if="importResult" class="sub-block">
+        <h3>导入结果</h3>
+        <div class="stats">
+          成功 {{ importResult.placed.length }}
+          <template v-if="importResult.overwritten.length"> · 覆盖 {{ importResult.overwritten.length }}</template>
+          <template v-if="importResult.pendingSvg.length"> · SVG 暂存 {{ importResult.pendingSvg.length }}（待 P2 转 monochrome）</template>
+          <template v-if="importResult.errors.length"> · 失败 {{ importResult.errors.length }}</template>
+        </div>
+        <div class="issue-list">
+          <div v-for="(e, i) in importResult.errors" :key="'ie' + i" class="issue error">[失败] {{ e }}</div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="report" class="panel">
       <h2>校验报告</h2>
       <div v-if="report.profile" class="profile">
@@ -248,8 +377,10 @@ async function doCreate() {
 async function openDir(d) {
   dir.value = d;
   packResult.value = null;
+  resetImport();
   projectMeta.value = await window.themeAPI.loadProject(d);
   report.value = await window.themeAPI.validate(d);
+  await initList();
   view.value = 'project';
 }
 
@@ -278,6 +409,165 @@ async function doPack() {
 function brandLabel(key) {
   const b = brands.find(x => x.key === key);
   return b ? `${b.label}（${b.desc}）` : key;
+}
+
+// ---------- 适配清单 / 覆盖率 ----------
+const listFiles = ref([]);
+const listFile = ref(null);
+const cov = ref(null);
+const search = ref('');
+const filterCat = ref('');
+const filterStatus = ref('');
+
+const baseName = (p) => p.split(/[\\/]/).pop();
+const pct = (n) => (cov.value && cov.value.summary.total ? (n / cov.value.summary.total * 100) + '%' : '0%');
+const catLabel = (c) => ({ system: '系统', 'third-party': '三方', special: '特殊' }[c] || c || '');
+const statusLabel = (s) => ({ full: '已适配', partial: '部分', none: '未适配' }[s]);
+const layerLabel = (l) => ({ single: '图标', bg: '背景层', top: '前景层', mono: '上色资源' }[l] || l);
+const pkgOf = (candStr) => (candStr.match(/\(([^()]*)\)$/) || [])[1] || candStr;
+const layerOf = (f) => {
+  const stem = f.replace(/\.[^.]+$/, '');
+  const m = stem.match(/_bg$|_top$/i);
+  if (m) return m[0].slice(1).toLowerCase();
+  if (f.toLowerCase().endsWith('.svg')) return 'mono';
+  return 'single';
+};
+
+const filteredApps = computed(() => {
+  if (!cov.value) return [];
+  const q = search.value.trim().toLowerCase();
+  return cov.value.apps.filter(a => {
+    if (filterCat.value && a.category !== filterCat.value) return false;
+    if (filterStatus.value && a.status !== filterStatus.value) return false;
+    if (q && !(a.package.toLowerCase().includes(q) || (a.name || '').toLowerCase().includes(q))) return false;
+    return true;
+  });
+});
+
+async function initList() {
+  listFiles.value = await window.themeAPI.scanLists(dir.value);
+  const bound = projectMeta.value && projectMeta.value.listFile;
+  listFile.value = bound || (listFiles.value.length ? listFiles.value[0] : null);
+  if (listFile.value) {
+    if (!bound) await window.themeAPI.bindList(dir.value, listFile.value);
+    await refreshCoverage();
+  } else {
+    cov.value = null;
+  }
+}
+
+async function onListChange() {
+  if (listFile.value) {
+    await window.themeAPI.bindList(dir.value, listFile.value);
+    await refreshCoverage();
+  } else {
+    cov.value = null;
+  }
+  resetImport();
+}
+
+async function pickListFile() {
+  const f = await window.themeAPI.selectFile('选择适配清单 JSON', [{ name: '清单', extensions: ['json'] }]);
+  if (!f) return;
+  if (!listFiles.value.includes(f)) listFiles.value.push(f);
+  listFile.value = f;
+  await onListChange();
+}
+
+async function refreshCoverage() {
+  if (!listFile.value || !report.value) return;
+  cov.value = await window.themeAPI.coverage(dir.value, listFile.value, {
+    iconStyle: report.value.profile.iconStyle,
+    colorMode: report.value.profile.colorMode,
+  });
+}
+
+// ---------- 资源导入 ----------
+const assetDir = ref('');
+const match = ref(null);
+const amChoices = ref({});
+const cfChoices = ref({});
+const sgChoices = ref({});
+const importing = ref(false);
+const importResult = ref(null);
+
+function resetImport() {
+  assetDir.value = '';
+  match.value = null;
+  amChoices.value = {};
+  cfChoices.value = {};
+  sgChoices.value = {};
+  importResult.value = null;
+}
+
+async function pickAssetDir() {
+  const d = await window.themeAPI.selectDir('选择设计师素材文件夹');
+  if (!d) return;
+  assetDir.value = d;
+  importResult.value = null;
+  match.value = await window.themeAPI.matchAssets(listFile.value, d);
+  // 预填冲突选择（默认保留第一个文件）
+  const c = {};
+  for (const cf of match.value.conflicts) c[cf.package + '|' + cf.layer] = cf.files[0];
+  cfChoices.value = c;
+  // 预填单图图层（adaptive 项目默认作为前景层）
+  const s = {};
+  for (const m of match.value.matched) if (m.layer === 'single') s[m.file] = 'top';
+  sgChoices.value = s;
+  amChoices.value = {};
+}
+
+// adaptive 项目中图层为 single 的匹配项需要人工指定图层
+const singleLayerFiles = computed(() => {
+  if (!match.value || !report.value) return [];
+  if (report.value.profile.iconStyle !== 'adaptive') return [];
+  const conflictKeys = new Set(match.value.conflicts.map(c => c.package + '|' + c.layer));
+  return match.value.matched.filter(m => m.layer === 'single' && !conflictKeys.has(m.package + '|single'));
+});
+
+// 最终导入计划 = 自动匹配（剔除被冲突/图层指定接管的）+ 人工确认 + 冲突/图层裁决
+const importPlan = computed(() => {
+  if (!match.value) return [];
+  const isAdaptive = report.value && report.value.profile.iconStyle === 'adaptive';
+  const plan = [];
+  const conflictKeys = new Set(match.value.conflicts.map(c => c.package + '|' + c.layer));
+  for (const m of match.value.matched) {
+    if (conflictKeys.has(m.package + '|' + m.layer)) continue; // 由冲突选择决定
+    if (isAdaptive && m.layer === 'single') {
+      const layer = sgChoices.value[m.file];
+      if (layer) plan.push({ ...m, layer, method: m.method + '+指定图层' });
+      continue;
+    }
+    plan.push(m);
+  }
+  for (const am of match.value.ambiguous) {
+    const pkg = amChoices.value[am.file];
+    if (pkg) plan.push({ file: am.file, layer: layerOf(am.file), package: pkg, method: '人工确认' });
+  }
+  for (const cf of match.value.conflicts) {
+    const f = cfChoices.value[cf.package + '|' + cf.layer];
+    if (!f) continue;
+    let layer = cf.layer;
+    if (isAdaptive && layer === 'single') layer = sgChoices.value[f] || 'top';
+    plan.push({ file: f, layer, package: cf.package, method: '冲突裁决' });
+  }
+  return plan;
+});
+
+async function doImport() {
+  importing.value = true;
+  try {
+    importResult.value = await window.themeAPI.importAssets(dir.value, importPlan.value, {
+      iconStyle: report.value.profile.iconStyle,
+      assetDir: assetDir.value,
+    });
+    match.value = null;
+    // 导入后联动：重跑校验 + 覆盖率
+    report.value = await window.themeAPI.validate(dir.value);
+    await refreshCoverage();
+  } finally {
+    importing.value = false;
+  }
 }
 
 // ---------- 菜单事件联动 ----------

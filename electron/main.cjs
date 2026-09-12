@@ -9,7 +9,8 @@ const path = require('path');
 const { validateTheme } = require('../core/validator');
 const { packTheme } = require('../core/packager');
 const { generateList, loadList, matchAssets, checkList } = require('../core/mapping');
-const { createProject, loadProject } = require('../core/scaffold');
+const { createProject, loadProject, bindList } = require('../core/scaffold');
+const { importAssets, coverage, scanLists } = require('../core/importer');
 
 // ---- 中文应用菜单 ----
 function buildMenu() {

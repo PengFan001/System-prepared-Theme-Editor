@@ -110,3 +110,48 @@ body {
 .form-note { color: var(--text-dim); font-size: 12px; line-height: 1.6; margin-top: 8px; word-break: break-all; }
 
 .wiz-actions { display: flex; justify-content: flex-end; }
+
+/* ---- 适配清单 / 资源导入 ---- */
+.list-toolbar { display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+.sel {
+  padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; background: var(--panel); outline: none; max-width: 320px;
+}
+.sel:focus { border-color: var(--accent); }
+
+.cov-bar {
+  height: 10px; border-radius: 5px; overflow: hidden; display: flex;
+  background: #eef0f3; margin: 10px 0 6px;
+}
+.cov-full { background: var(--ok); }
+.cov-partial { background: var(--warn); }
+.req-missing {
+  margin-left: 8px; padding: 2px 8px; border-radius: 10px;
+  background: #fef2f2; color: var(--error); font-size: 12px;
+}
+
+.app-table { max-height: 360px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+.app-row {
+  display: grid; grid-template-columns: 64px 160px 1fr 56px 1fr;
+  gap: 8px; align-items: center; padding: 6px 10px; font-size: 13px;
+  border-bottom: 1px solid #f0f1f4;
+}
+.app-row:last-child { border-bottom: none; }
+.app-row:hover { background: #f8fafc; }
+.app-status { font-size: 12px; text-align: center; border-radius: 10px; padding: 2px 0; }
+.app-status.full { background: #f0fdf4; color: var(--ok); }
+.app-status.partial { background: #fffbeb; color: var(--warn); }
+.app-status.none { background: #f3f4f6; color: var(--text-dim); }
+.app-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-name .req {
+  font-style: normal; font-size: 11px; color: var(--error);
+  border: 1px solid var(--error); border-radius: 4px; padding: 0 3px; margin-left: 4px;
+}
+.app-pkg { color: var(--text-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-cat { color: var(--text-dim); font-size: 12px; }
+.app-missing { color: var(--warn); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sub-block { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.sub-block h3 { font-size: 13px; margin-bottom: 8px; color: var(--text-dim); }
+.confirm-row { display: flex; gap: 12px; align-items: center; margin-bottom: 6px; }
+.confirm-row .app-name { min-width: 260px; }
