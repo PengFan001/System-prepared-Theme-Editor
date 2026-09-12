@@ -126,6 +126,11 @@ ipcMain.handle('list:load', (_e, file) => loadList(file));
 ipcMain.handle('list:init', (_e, dirs, project) => generateList(dirs, project));
 ipcMain.handle('list:check', (_e, file) => checkList(loadList(file)));
 ipcMain.handle('assets:match', (_e, listFile, assetDir) => matchAssets(loadList(listFile), assetDir));
+ipcMain.handle('assets:import', (_e, themeDir, matched, opts) => importAssets(themeDir, matched, opts));
+ipcMain.handle('list:scan', (_e, themeDir) => scanLists(themeDir));
+ipcMain.handle('list:bind', (_e, themeDir, listFile) => bindList(themeDir, listFile));
+ipcMain.handle('list:coverage', (_e, themeDir, listFile, profile) =>
+  coverage(themeDir, loadList(listFile), profile));
 
 app.whenReady().then(() => {
   buildMenu();
