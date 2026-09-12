@@ -1,0 +1,112 @@
+:root {
+  --bg: #f5f6f8;
+  --panel: #ffffff;
+  --border: #e3e6eb;
+  --text: #1f2329;
+  --text-dim: #6b7280;
+  --accent: #2563eb;
+  --error: #dc2626;
+  --warn: #d97706;
+  --ok: #059669;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+#app { height: 100vh; display: flex; flex-direction: column; }
+
+.header {
+  padding: 14px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.header h1 { font-size: 17px; font-weight: 600; }
+.header .sub { color: var(--text-dim); font-size: 12px; }
+
+.main { flex: 1; padding: 20px; overflow: auto; display: flex; flex-direction: column; gap: 16px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.panel h2 { font-size: 14px; margin-bottom: 12px; }
+
+.btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  font-size: 13px;
+  margin-right: 8px;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.primary:hover { opacity: 0.9; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dir-line { color: var(--text-dim); font-size: 12px; margin: 8px 0; word-break: break-all; }
+
+.profile { display: flex; gap: 16px; flex-wrap: wrap; margin: 10px 0; }
+.profile .tag {
+  padding: 4px 10px; border-radius: 12px; font-size: 12px;
+  background: #eef2ff; color: var(--accent);
+}
+.stats { color: var(--text-dim); font-size: 13px; margin: 8px 0; }
+
+.issue-list { max-height: 320px; overflow: auto; margin-top: 8px; }
+.issue { padding: 6px 10px; border-radius: 4px; margin-bottom: 4px; font-size: 13px; }
+.issue.error { background: #fef2f2; color: var(--error); }
+.issue.warn { background: #fffbeb; color: var(--warn); }
+.ok-line { color: var(--ok); padding: 8px 0; }
+
+.pack-result { margin-top: 10px; padding: 10px; border-radius: 6px; background: #f0fdf4; color: var(--ok); font-size: 13px; }
+
+/* ---- 首页 ---- */
+.main.home { flex-direction: row; align-items: stretch; justify-content: center; gap: 24px; padding-top: 60px; }
+.home-card {
+  width: 320px; padding: 28px 24px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.home-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(37, 99, 235, .12); }
+.home-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.home-desc { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+
+/* ---- 向导 ---- */
+.steps { display: flex; gap: 24px; }
+.step { color: var(--text-dim); font-size: 13px; }
+.step.active { color: var(--accent); font-weight: 600; }
+.step.done { color: var(--ok); }
+
+.opt-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0 20px; }
+.opt-card {
+  min-width: 200px; padding: 12px 16px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel);
+}
+.opt-card:hover { border-color: var(--accent); }
+.opt-card.on { border-color: var(--accent); background: #eef2ff; }
+.opt-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.opt-desc { color: var(--text-dim); font-size: 12px; line-height: 1.5; }
+
+.form { display: flex; flex-direction: column; gap: 8px; max-width: 520px; }
+.form label { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+.form input {
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 14px; outline: none;
+}
+.form input:focus { border-color: var(--accent); }
+.form-note { color: var(--text-dim); font-size: 12px; line-height: 1.6; margin-top: 8px; word-break: break-all; }
+
+.wiz-actions { display: flex; justify-content: flex-end; }
