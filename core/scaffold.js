@@ -5,7 +5,7 @@
  * 不参与打包（packager 跳过点开头文件）。
  *
  * 兜底模板三件套（icon_theme_background/foreground/mask）在创建时
- * 从 themeSource 样本预置（统一转 webp），防止设计师忘记上传；
+ * 从仓库自带 assets/templates 预置（临时资源），防止设计师忘记上传；
  * 设计师后续上传正式资源时替换即可。
  */
 
@@ -14,7 +14,9 @@ const path = require('path');
 const crypto = require('crypto');
 const P = require('./profiles');
 
-// 默认模板图源（mono 样本）
+// 默认模板图源：仓库自带 assets/templates（webp，临时资源，正式稿到位后替换此目录）
+// 兜底回退 themeSource 样本（png，需 sharp 转 webp）
+const TEMPLATE_ASSET_DIR = path.join(__dirname, '..', 'assets', 'templates');
 const TEMPLATE_SRC_DIR = path.join(__dirname, '..', 'themeSource',
   'support_adaptive_icon_feature_theme', 'mono', 'icons');
 
@@ -35,7 +37,9 @@ ${adaptive ? '    <support_adaptive_icon_feature value="1"/>\n' : ''}</descripti
 
 /**
  * 预置兜底模板三件套到 icons/。
- * 优先转 webp（需 sharp）；sharp 不可用或源缺失时退回直接复制 png。
+ * 优先复制仓库自带 assets/templates/*.webp（无需转换）；
+ * 缺失时回退 themeSource 样本 png（需 sharp 转 webp）；
+ * 都没有则跳过（由校验器提示缺失）。
  * 返回实际使用的扩展名（'webp' | 'png'），供 description.xml 引用。
  */
 async function seedTemplateImages(iconsDir) {
@@ -43,15 +47,23 @@ async function seedTemplateImages(iconsDir) {
   try { sharp = require('sharp'); } catch { /* 无 sharp 时退回复制 */ }
   let usedExt = 'webp';
   for (const key of P.ICON_TEMPLATE_KEYS) {
-    const src = path.join(TEMPLATE_SRC_DIR, `${key}.png`);
-    if (!fs.existsSync(src)) continue;
+    const fromAssets = path.join(TEMPLATE_ASSET_DIR, `${key}.webp`);
+    const fromSample = path.join(TEMPLATE_SRC_DIR, `${key}.png`);
     const dstWebp = path.join(iconsDir, `${key}.webp`);
     try {
-      if (!sharp) throw new Error('no sharp');
-      await sharp(src).webp({ quality: 95 }).toFile(dstWebp);
+      if (fs.existsSync(fromAssets)) {
+        fs.copyFileSync(fromAssets, dstWebp);
+      } else if (fs.existsSync(fromSample)) {
+        if (!sharp) throw new Error('no sharp');
+        await sharp(fromSample).webp({ quality: 95 }).toFile(dstWebp);
+      } else {
+        continue;
+      }
     } catch {
-      fs.copyFileSync(src, path.join(iconsDir, `${key}.png`));
-      usedExt = 'png';
+      if (fs.existsSync(fromSample)) {
+        fs.copyFileSync(fromSample, path.join(iconsDir, `${key}.png`));
+        usedExt = 'png';
+      }
     }
   }
   return usedExt;
