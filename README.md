@@ -63,6 +63,33 @@ npm run icon       # 重新生成应用图标 build/icon.png（占位图标，�
 - sharp 原生模块已配置 `asarUnpack`，安装包内可直接读写
 - 构建机如需下载 Electron/NSIS 二进制，已配置 npmmirror 镜像（`electronDownload.mirror` + 环境变量 `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/`）
 
+### macOS 分发（设计师用 Mac 的场景）
+
+macOS 包**必须在 Mac 环境构建**（electron-builder 不支持在 Windows 上打 mac 包），两种方式：
+
+**方式一：GitHub Actions 云端构建（推荐，无需 Mac）**
+
+仓库已内置 `.github/workflows/build-mac.yml`：
+
+1. 打开 GitHub 仓库 → **Actions** 页签 → 左侧选 **build-mac** → **Run workflow**
+2. 等待构建完成（约 5-10 分钟），在该次运行页面的 **Artifacts** 区下载 `mac-dist`
+3. 内含 `*-arm64.dmg`（Apple 芯片 Mac：M1/M2/M3/M4）和 `*-x64.dmg`（Intel Mac），按需分发给设计师
+
+**方式二：找一台 Mac 本地构建**
+
+```bash
+git clone <仓库地址> && cd System-prepared-Theme-Editor
+npm install
+node scripts/dist.js --mac --arm64 --x64   # 产物在 release/
+```
+
+**设计师首次打开（未签名应用的必要操作）**：当前构建未做 Apple 签名/公证（需付费开发者账号），macOS 会拦截。首次使用任选其一：
+
+- 访达中**右键 App → 打开** → 弹窗中再点"打开"（之后双击即可正常启动）
+- 或终端执行：`xattr -cr "/Applications/System-prepared Theme Editor.app"`
+
+若后续采购 Apple Developer 账号（$99/年），配置证书 + 公证后设计师即可无感安装。
+
 ## 适配清单接入（多台电脑 / 新同事上手）
 
 适配清单（应用名 ↔ 包名 ↔ 分类）由项目方提供，**不入仓库**（含内部包名信息）。拿到清单文件后：
