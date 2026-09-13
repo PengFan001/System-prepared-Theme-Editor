@@ -277,6 +277,159 @@
       </div>
     </div>
 
+    <!-- ========== 壁纸 / 预览图 / 字体导入 ========== -->
+    <div class="panel">
+      <h2>壁纸 / 预览图 / 字体</h2>
+
+      <template v-if="report && report.profile.type === 0">
+        <div class="sub-block">
+          <h3>壁纸（导入后自动转 webp → wallpapers/drawable/）</h3>
+          <div class="confirm-row">
+            <span class="app-name">桌面壁纸（wallpaper_home）</span>
+            <button class="btn" @click="pickExtraImage('wallpaperHome')" :disabled="extrasImporting">选择图片…</button>
+            <span class="dir-line" style="display:inline">{{ extras.wallpaperHome ? baseName(extras.wallpaperHome) : '未选择' }}</span>
+          </div>
+          <div class="confirm-row">
+            <span class="app-name">锁屏壁纸（wallpaper_lock）</span>
+            <button class="btn" @click="pickExtraImage('wallpaperLock')" :disabled="extrasImporting">选择图片…</button>
+            <span class="dir-line" style="display:inline">{{ extras.wallpaperLock ? baseName(extras.wallpaperLock) : '未选择' }}</span>
+          </div>
+        </div>
+
+        <div class="sub-block">
+          <h3>预览图（→ preview/）</h3>
+          <div class="confirm-row">
+            <span class="app-name">锁屏预览（preview_lock_0）</span>
+            <button class="btn" @click="pickExtraImage('previewLock')" :disabled="extrasImporting">选择图片…</button>
+            <span class="dir-line" style="display:inline">{{ extras.previewLock ? baseName(extras.previewLock) : '未选择' }}</span>
+          </div>
+          <div class="confirm-row">
+            <span class="app-name">缩略图（thumbnail，可选）</span>
+            <button class="btn" @click="pickExtraImage('thumbnail')" :disabled="extrasImporting">选择图片…</button>
+            <span class="dir-line" style="display:inline">{{ extras.thumbnail ? baseName(extras.thumbnail) : '未选择' }}</span>
+          </div>
+          <div class="confirm-row">
+            <span class="app-name">解锁预览（preview_unlock_0…n，按下列顺序命名）</span>
+            <button class="btn" @click="pickUnlockImages" :disabled="extrasImporting">添加图片…</button>
+          </div>
+          <div v-for="(f, i) in extras.previewUnlock" :key="f + i" class="confirm-row">
+            <span class="app-name">preview_unlock_{{ i }} ← {{ baseName(f) }}</span>
+            <button class="btn" :disabled="i === 0 || extrasImporting" @click="moveItem(extras.previewUnlock, i, -1)">上移</button>
+            <button class="btn" :disabled="i === extras.previewUnlock.length - 1 || extrasImporting" @click="moveItem(extras.previewUnlock, i, 1)">下移</button>
+            <button class="btn" :disabled="extrasImporting" @click="extras.previewUnlock.splice(i, 1)">移除</button>
+          </div>
+          <div v-if="extras.previewUnlock.length" class="form-note">
+            导入会清空项目内旧的 preview_unlock_* 序列后按此顺序重排，防止序号残留。
+          </div>
+        </div>
+      </template>
+
+      <div class="sub-block">
+        <h3>字体（原样拷贝 → app/com.transsion.launcher3/font/）</h3>
+        <div class="confirm-row">
+          <span class="app-name">字体文件（ttf / otf，可多选）</span>
+          <button class="btn" @click="pickFontFiles" :disabled="extrasImporting">添加字体…</button>
+        </div>
+        <div v-for="(f, i) in extras.fonts" :key="f + i" class="confirm-row">
+          <span class="app-name">{{ baseName(f) }}</span>
+          <button class="btn" :disabled="extrasImporting" @click="extras.fonts.splice(i, 1)">移除</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <button class="btn primary" :disabled="!extrasPlanCount || extrasImporting" @click="doImportExtras">
+          {{ extrasImporting ? '导入中…' : `导入 ${extrasPlanCount} 项` }}
+        </button>
+        <button class="btn" :disabled="extrasImporting || !extrasPlanCount" @click="resetExtras()">清空选择</button>
+      </div>
+
+      <div v-if="extrasImporting && extrasProgress" class="import-progress">
+        <div class="cov-bar">
+          <div class="cov-full" :style="{ width: extrasProgress.total ? (extrasProgress.done / extrasProgress.total * 100) + '%' : '0%' }"></div>
+        </div>
+        <div class="stats">正在导入 {{ extrasProgress.done }} / {{ extrasProgress.total }}（完成后自动刷新校验）</div>
+      </div>
+
+      <div v-if="extrasError" class="issue error" style="margin-top:10px">[导入失败] {{ extrasError }}</div>
+
+      <div v-if="extrasResult" class="sub-block">
+        <h3>导入结果</h3>
+        <div class="stats">
+          成功 {{ extrasResult.placed.length }}
+          <template v-if="extrasResult.overwritten.length"> · 覆盖 {{ extrasResult.overwritten.length }}</template>
+          <template v-if="extrasResult.errors.length"> · 失败 {{ extrasResult.errors.length }}</template>
+        </div>
+        <div v-if="!extrasResult.errors.length" class="ok-line">全部导入成功，校验已刷新。</div>
+        <div class="issue-list">
+          <div v-for="(e, i) in extrasResult.errors" :key="'xe' + i" class="issue error">[失败] {{ e }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 桌面动态功能配置 ========== -->
+    <div class="panel">
+      <h2>桌面动态功能配置（com.transsion.launcher3）</h2>
+      <div class="form-note" style="margin-bottom:10px">
+        values 五件套是动态时钟/动态日历等桌面动态功能的配置中枢，缺失会导致动态图标失效。
+      </div>
+
+      <div v-if="lcMissing.length" class="issue warn" style="margin-bottom:10px">
+        [配置缺失] values/ 缺少 {{ lcMissing.join('、') }}，动态时钟/动态日历将失效。
+        <button class="btn primary" style="margin-left:8px" :disabled="lcSaving" @click="doSeedBaseline">
+          写入基线配置（含 2 个基线字体）
+        </button>
+      </div>
+
+      <template v-if="lc">
+        <div class="sub-block">
+          <h3>功能开关</h3>
+          <div v-for="s in lcSpec.bools" :key="s.key" class="confirm-row">
+            <label class="lc-check"><input type="checkbox" v-model="lc.bools[s.key]" /> {{ s.label }}</label>
+            <span class="form-note">{{ s.desc }}</span>
+          </div>
+        </div>
+
+        <div class="sub-block">
+          <h3>日历颜色（#AARRGGBB 或 #RRGGBB）</h3>
+          <div v-for="s in lcSpec.colors" :key="s.key" class="confirm-row">
+            <span class="app-name">{{ s.label }}</span>
+            <span class="lc-swatch" :style="{ background: argbToCss(lc.colors[s.key]) }"></span>
+            <input v-model="lc.colors[s.key]" class="sel" style="width:130px" spellcheck="false" />
+          </div>
+        </div>
+
+        <div class="sub-block">
+          <h3>日历排版（dp）</h3>
+          <div v-for="s in lcSpec.dimens" :key="s.key" class="confirm-row">
+            <span class="app-name">{{ s.label }}</span>
+            <input type="number" v-model.number="lc.dimens[s.key]" class="sel" style="width:100px" />
+          </div>
+        </div>
+
+        <div class="sub-block">
+          <h3>动态日历字体（引用 font/ 目录内文件）</h3>
+          <div v-for="s in lcSpec.strings" :key="s.key" class="confirm-row">
+            <span class="app-name">{{ s.label }}</span>
+            <select v-model="lc.strings[s.key]" class="sel">
+              <option v-for="f in lcFontOptions(s.key)" :key="f" :value="f">{{ f }}</option>
+            </select>
+          </div>
+          <div class="form-note">
+            font/ 现有：{{ lcFonts.length ? lcFonts.join('、') : '（空，可在上方"壁纸 / 预览图 / 字体"面板导入）' }}
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button class="btn primary" :disabled="lcSaving" @click="doSaveLauncherConfig">
+            {{ lcSaving ? '保存中…' : '保存配置' }}
+          </button>
+          <span v-if="lcSaved" class="ok-line" style="display:inline;margin-left:10px">已保存，校验已刷新。</span>
+        </div>
+        <div v-if="lcError" class="issue error" style="margin-top:10px">[保存失败] {{ lcError }}</div>
+      </template>
+      <div v-else class="form-note">配置读取中…</div>
+    </div>
+
     <div v-if="report" class="panel">
       <h2>校验报告</h2>
       <div v-if="report.profile" class="profile">
@@ -300,6 +453,9 @@
       <h2>打包结果</h2>
       <div class="pack-result">
         {{ packResult.outFile }}（{{ packResult.fileCount }} 个文件，{{ (packResult.bytes / 1024 / 1024).toFixed(2) }} MB）
+      </div>
+      <div v-if="packResult.version" class="ok-line">
+        manifest version 已递增：{{ packResult.version.from }} → {{ packResult.version.to }}（已写回项目，系统凭此应用更新资源）
       </div>
     </div>
   </div>
@@ -388,8 +544,10 @@ async function openDir(d) {
   dir.value = d;
   packResult.value = null;
   resetImport();
+  resetExtras();
   projectMeta.value = await window.themeAPI.loadProject(d);
   report.value = await window.themeAPI.validate(d);
+  await loadLauncherConfig();
   await initList();
   view.value = 'project';
 }
@@ -411,6 +569,8 @@ async function doPack() {
     report.value = r;
     if (r.errors.length) { alert('存在错误，已阻断打包'); return; }
     packResult.value = await window.themeAPI.pack(dir.value, out);
+    // 打包会回写 manifest version（+1），刷新校验报告保持界面数据一致
+    report.value = await window.themeAPI.validate(dir.value);
   } finally {
     packing.value = false;
   }
@@ -604,6 +764,147 @@ async function doImport() {
   }
 }
 
+// ---------- 壁纸 / 预览图 / 字体导入 ----------
+const IMAGE_FILTERS = [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp'] }];
+const FONT_FILTERS = [{ name: '字体', extensions: ['ttf', 'otf'] }];
+const extras = ref({ wallpaperHome: null, wallpaperLock: null, previewLock: null, previewUnlock: [], thumbnail: null, fonts: [] });
+const extrasImporting = ref(false);
+const extrasResult = ref(null);
+const extrasError = ref('');
+const extrasProgress = ref(null);
+
+function resetExtras() {
+  extras.value = { wallpaperHome: null, wallpaperLock: null, previewLock: null, previewUnlock: [], thumbnail: null, fonts: [] };
+  extrasResult.value = null;
+  extrasError.value = '';
+  extrasProgress.value = null;
+}
+
+const extrasPlanCount = computed(() => {
+  const e = extras.value;
+  return (e.wallpaperHome ? 1 : 0) + (e.wallpaperLock ? 1 : 0) + (e.previewLock ? 1 : 0) +
+    (e.thumbnail ? 1 : 0) + e.previewUnlock.length + e.fonts.length;
+});
+
+async function pickExtraImage(key) {
+  const f = await window.themeAPI.selectFile('选择图片', IMAGE_FILTERS);
+  if (f) { extras.value[key] = f; extrasResult.value = null; }
+}
+async function pickUnlockImages() {
+  const files = await window.themeAPI.selectFiles('选择解锁预览图（可多选，顺序可后续调整）', IMAGE_FILTERS);
+  if (files.length) { extras.value.previewUnlock.push(...files); extrasResult.value = null; }
+}
+async function pickFontFiles() {
+  const files = await window.themeAPI.selectFiles('选择字体文件（ttf / otf，可多选）', FONT_FILTERS);
+  if (files.length) { extras.value.fonts.push(...files); extrasResult.value = null; }
+}
+function moveItem(arr, i, d) {
+  const j = i + d;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+}
+
+async function doImportExtras() {
+  extrasImporting.value = true;
+  extrasError.value = '';
+  extrasProgress.value = { done: 0, total: extrasPlanCount.value };
+  try {
+    // extras 内含 Vue 响应式 Proxy，Electron IPC 无法克隆，必须先深拷贝为纯对象
+    const payload = JSON.parse(JSON.stringify(extras.value));
+    extrasResult.value = await window.themeAPI.importExtras(dir.value, payload);
+    if (!extrasResult.value.errors.length) resetExtrasSelections();
+    report.value = await window.themeAPI.validate(dir.value);
+  } catch (e) {
+    extrasError.value = String(e.message || e);
+  } finally {
+    extrasImporting.value = false;
+    extrasProgress.value = null;
+  }
+}
+// 导入成功后清空已选项（保留结果条），防止误点重复导入
+function resetExtrasSelections() {
+  extras.value = { wallpaperHome: null, wallpaperLock: null, previewLock: null, previewUnlock: [], thumbnail: null, fonts: [] };
+}
+
+// ---------- 桌面动态功能配置（launcher values 五件套） ----------
+const lc = ref(null);        // 编辑中的配置 { bools, colors, dimens, strings }
+const lcSpec = ref({ bools: [], colors: [], dimens: [], strings: [] });
+const lcFiles = ref({});     // 各 XML 是否已存在
+const lcFonts = ref([]);     // font/ 目录现有字体
+const lcSaving = ref(false);
+const lcSaved = ref(false);
+const lcError = ref('');
+
+const lcMissing = computed(() =>
+  Object.entries(lcFiles.value).filter(([, v]) => !v).map(([k]) => k + '.xml'));
+
+async function loadLauncherConfig() {
+  lcSaved.value = false;
+  lcError.value = '';
+  try {
+    const r = await window.themeAPI.launcherGetConfig(dir.value);
+    lc.value = r.config;
+    lcSpec.value = r.spec;
+    lcFiles.value = r.files;
+    lcFonts.value = r.fonts;
+  } catch (e) {
+    console.warn('launcher 配置读取失败：', e);
+    lc.value = null;
+  }
+}
+
+function lcFontOptions(key) {
+  const opts = lcFonts.value.map(f => 'font/' + f);
+  const cur = lc.value && lc.value.strings[key];
+  if (cur && !opts.includes(cur)) opts.unshift(cur);
+  return opts;
+}
+
+// #AARRGGBB → CSS rgba()；#RRGGBB 原样可用
+function argbToCss(v) {
+  const m = String(v || '').match(/^#([0-9a-fA-F]{2})([0-9a-fA-F]{6})$/);
+  if (!m) return v || 'transparent';
+  const a = parseInt(m[1], 16) / 255;
+  const hex = m[2];
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a.toFixed(2)})`;
+}
+
+async function doSeedBaseline() {
+  lcSaving.value = true;
+  lcError.value = '';
+  try {
+    await window.themeAPI.launcherSeedBaseline(dir.value);
+    await loadLauncherConfig();
+    report.value = await window.themeAPI.validate(dir.value);
+    lcSaved.value = true;
+  } catch (e) {
+    lcError.value = String(e.message || e);
+  } finally {
+    lcSaving.value = false;
+  }
+}
+
+async function doSaveLauncherConfig() {
+  lcSaving.value = true;
+  lcError.value = '';
+  lcSaved.value = false;
+  try {
+    // lc 内含 Vue 响应式 Proxy，Electron IPC 无法克隆，必须先深拷贝为纯对象
+    const payload = JSON.parse(JSON.stringify(lc.value));
+    await window.themeAPI.launcherSaveConfig(dir.value, payload);
+    await loadLauncherConfig();
+    report.value = await window.themeAPI.validate(dir.value);
+    lcSaved.value = true;
+  } catch (e) {
+    lcError.value = String(e.message || e);
+  } finally {
+    lcSaving.value = false;
+  }
+}
+
 // ---------- 菜单事件联动 ----------
 const unsubs = [];
 onMounted(() => {
@@ -613,6 +914,7 @@ onMounted(() => {
     if (view.value === 'project' && dir.value && !packing.value) doPack();
   }));
   unsubs.push(window.themeAPI.onImportProgress(p => { importProgress.value = p; }));
+  unsubs.push(window.themeAPI.onExtrasProgress(p => { extrasProgress.value = p; }));
 });
 onUnmounted(() => unsubs.forEach(u => u && u()));
 </script>

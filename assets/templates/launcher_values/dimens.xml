@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    
+	<!-- 动态日历日期Y轴距离 -->
+	<!-- 日历界面中日期与上方元素的垂直距离 -->
+	<dimen name="tran_calendar_date_y">48dp</dimen>
+	
+	<!-- 动态日历星期Y轴距离 -->
+	<!-- 日历界面中星期标题与上方元素的垂直距离 -->
+	<dimen name="tran_calendar_week_y">15dp</dimen>
+	
+	<!-- 动态日历日期字号 -->
+	<!-- 日历界面中日期数字的字体大小 -->
+	<dimen name="tran_calendar_date_size">28dp</dimen>
+	
+	<!-- 动态日历星期字号 -->
+	<!-- 日历界面中星期标题的字体大小 -->
+	<dimen name="tran_calendar_week_size">10dp</dimen>
+	
+	<!-- 动态日历距离顶部边距 -->
+	<!-- 日历界面中内容与顶部的间距 -->
+	<dimen name="tran_calendar_text_gap">9dp</dimen>
+	
+	<!-- 动态日历内容距离顶部边距 -->
+	<!-- 日历界面中内容区域与顶部的间距 -->
+	<dimen name="tran_calendar_top_gap">1dp</dimen>
+</resources>

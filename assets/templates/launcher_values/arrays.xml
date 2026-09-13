@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    
+	    <!--动态时钟图标配置-->
+	<array name="hios_dynamic_icons_clock">
+	    <item>hios_dynamic_icons_clock_bg</item>
+		<item>hios_dynamic_icons_clock_h</item>
+		<item>hios_dynamic_icons_clock_m</item>
+		<item>hios_dynamic_icons_clock_point</item>
+	</array>
+	    <!--动态时钟图标配置-->
+</resources>

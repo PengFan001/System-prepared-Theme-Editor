@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const P = require('./profiles');
+const { seedLauncherBaseline } = require('./launcherConfig');
 
 // 默认模板图源：仓库自带 assets/templates（webp，临时资源，正式稿到位后替换此目录）
 // 兜底回退 themeSource 样本（png，需 sharp 转 webp）
@@ -118,11 +119,15 @@ async function createProjectAsync(dir, opts) {
   const imgExt = await seedTemplateImages(iconsDir);
   fs.writeFileSync(path.join(iconsDir, 'description.xml'), descriptionXml(effStyle, imgExt));
 
+  // app/com.transsion.launcher3/：预置 values 五件套 + 基线字体
+  // （动态时钟/动态日历等桌面动态功能的配置中枢，缺失会导致动态图标失效）
+  const baseline = seedLauncherBaseline(dir);
+
   // 工具侧项目配置
   const project = { tool: 'System-prepared Theme Editor', iconStyle: effStyle, colorMode, brand: brand || null, listFile: null };
   fs.writeFileSync(path.join(dir, '.themeproject.json'), JSON.stringify(project, null, 2) + '\n');
 
-  return { dir, manifest, project };
+  return { dir, manifest, project, baseline };
 }
 
 function loadProject(dir) {

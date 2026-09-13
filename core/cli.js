@@ -121,11 +121,13 @@ async function main() {
   if (cmd === 'pack') {
     const [dir, out] = args;
     const keepFormat = args.includes('--keep-format');
-    if (!dir || !out) { console.error('用法: pack <主题目录> <输出.xth> [--keep-format]'); process.exit(2); }
+    const keepVersion = args.includes('--keep-version');
+    if (!dir || !out) { console.error('用法: pack <主题目录> <输出.xth> [--keep-format] [--keep-version]'); process.exit(2); }
     const r = validateTheme(dir);
     printReport(dir, r);
     if (r.errors.length) { console.error('\n存在错误，已阻断打包。'); process.exit(1); }
-    const res = await packTheme(dir, out, { keepFormat });
+    const res = await packTheme(dir, out, { keepFormat, bumpVersion: !keepVersion });
+    if (res.version) console.log(`version: ${res.version.from} → ${res.version.to}`);
     console.log(`\n打包完成: ${res.outFile}（${res.fileCount} 个文件，${(res.bytes / 1024 / 1024).toFixed(2)} MB）`);
     return;
   }

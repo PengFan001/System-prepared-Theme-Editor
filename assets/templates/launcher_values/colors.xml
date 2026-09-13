@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    
+	<!-- 日历日期颜色 -->
+	<color name="tran_calendar_date_color">#FF393E40</color>
+	
+	<!-- 日历日期颜色 -->
+	<color name="tran_calendar_week_color">#FF1B8AF5</color>
+	<!-- 日历渐变起始颜色 -->
+	<!-- 用于日历界面中的渐变起始颜色，当前设置为透明黑色 -->
+	<color name="tran_calendar_gradation_start_color">#ff000000</color>
+	<!-- 日历渐变结束颜色 -->
+	<color name="tran_calendar_gradation_end_color">#ff000000</color>
+</resources>

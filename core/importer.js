@@ -141,4 +141,108 @@ function scanLists(themeDir) {
     .map(f => path.join(dir, f));
 }
 
-module.exports = { importAssets, coverage, scanLists, PENDING_SVG_DIR };
+// ---------- 其他资源导入：壁纸 / 预览图 / 字体（P1④） ----------
+
+// 字体落点与 scaffold 骨架保持一致（样本即 com.transsion.launcher3）
+const LAUNCHER_FONT_DIR = path.join('app', 'com.transsion.launcher3', 'font');
+const FONT_EXTS = new Set(['ttf', 'otf']);
+
+/** 单图转 webp 落盘；无 sharp 时退回复制原格式（打包时仍会强制转 webp） */
+async function imageToWebp(sharp, src, dstWebp) {
+  if (sharp) {
+    await sharp(src).webp({ quality: 95 }).toFile(dstWebp);
+    return path.basename(dstWebp);
+  }
+  const raw = dstWebp.replace(/\.webp$/, '.' + extOf(src));
+  fs.copyFileSync(src, raw);
+  return path.basename(raw);
+}
+
+/**
+ * 导入壁纸 / 预览图 / 字体。
+ * @param {string} themeDir 主题项目目录
+ * @param {object} extras 全部为可选字段，传什么导入什么：
+ *   {
+ *     wallpaperHome?: string            桌面壁纸源图（png/jpg/webp…）
+ *     wallpaperLock?: string            锁屏壁纸源图
+ *     previewLock?: string              锁屏预览图（1 张 → preview_lock_0.webp）
+ *     previewUnlock?: string[]          解锁预览图（有序 → preview_unlock_0..n-1.webp，
+ *                                       导入前清空旧的 preview_unlock_* 避免序号残留）
+ *     thumbnail?: string                缩略图（可选 → preview/thumbnail.webp）
+ *     fonts?: string[]                  字体文件（ttf/otf 原样拷贝，不转 webp）
+ *   }
+ * @param {object} opts { onProgress?(done, total, file) }
+ * @returns {Promise<{placed, overwritten, errors}>}
+ *   placed: [{ file, target }]（target 为相对 themeDir 的路径）
+ */
+async function importExtras(themeDir, extras, opts = {}) {
+  const { onProgress = null } = opts;
+  let sharp = null;
+  try { sharp = require('sharp'); } catch { /* 退化：直接复制原格式 */ }
+
+  const jobs = []; // { src, dst, convert: 'webp'|'copy' }
+
+  // 壁纸（固定文件名，直接覆盖）
+  if (extras.wallpaperHome) {
+    jobs.push({ src: extras.wallpaperHome, dst: path.join(themeDir, 'wallpapers', 'drawable', 'wallpaper_home.webp'), convert: 'webp' });
+  }
+  if (extras.wallpaperLock) {
+    jobs.push({ src: extras.wallpaperLock, dst: path.join(themeDir, 'wallpapers', 'drawable', 'wallpaper_lock.webp'), convert: 'webp' });
+  }
+
+  // 预览图
+  const previewDir = path.join(themeDir, 'preview');
+  if (extras.previewUnlock && extras.previewUnlock.length) {
+    // 清空旧的 unlock 序列，防止新序列比旧序列短时残留多余序号
+    if (fs.existsSync(previewDir)) {
+      for (const f of fs.readdirSync(previewDir)) {
+        const stem = f.replace(/\.[^.]+$/, '');
+        if (/^preview_unlock_\d+$/.test(stem)) fs.unlinkSync(path.join(previewDir, f));
+      }
+    }
+    extras.previewUnlock.forEach((src, i) => {
+      jobs.push({ src, dst: path.join(previewDir, `preview_unlock_${i}.webp`), convert: 'webp' });
+    });
+  }
+  if (extras.previewLock) {
+    jobs.push({ src: extras.previewLock, dst: path.join(previewDir, 'preview_lock_0.webp'), convert: 'webp' });
+  }
+  if (extras.thumbnail) {
+    jobs.push({ src: extras.thumbnail, dst: path.join(previewDir, 'thumbnail.webp'), convert: 'webp' });
+  }
+
+  // 字体（原样拷贝）
+  for (const src of (extras.fonts || [])) {
+    jobs.push({ src, dst: path.join(themeDir, LAUNCHER_FONT_DIR, path.basename(src)), convert: 'copy' });
+  }
+
+  const placed = [];
+  const overwritten = [];
+  const errors = [];
+  let done = 0;
+  for (const j of jobs) {
+    done++;
+    const base = path.basename(j.src);
+    if (onProgress) onProgress(done, jobs.length, base);
+    try {
+      if (j.convert === 'copy') {
+        const ext = extOf(base).toLowerCase();
+        if (!FONT_EXTS.has(ext)) { errors.push(`${base}：仅支持 ttf/otf 字体`); continue; }
+        fs.mkdirSync(path.dirname(j.dst), { recursive: true });
+        if (fs.existsSync(j.dst)) overwritten.push(path.relative(themeDir, j.dst));
+        fs.copyFileSync(j.src, j.dst);
+        placed.push({ file: base, target: path.relative(themeDir, j.dst) });
+      } else {
+        fs.mkdirSync(path.dirname(j.dst), { recursive: true });
+        if (fs.existsSync(j.dst)) overwritten.push(path.relative(themeDir, j.dst));
+        const name = await imageToWebp(sharp, j.src, j.dst);
+        placed.push({ file: base, target: path.relative(themeDir, path.join(path.dirname(j.dst), name)) });
+      }
+    } catch (e) {
+      errors.push(`${base}：${e.message}`);
+    }
+  }
+  return { placed, overwritten, errors };
+}
+
+module.exports = { importAssets, importExtras, coverage, scanLists, PENDING_SVG_DIR };

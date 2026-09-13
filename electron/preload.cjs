@@ -6,6 +6,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('themeAPI', {
   selectDir: (title) => ipcRenderer.invoke('dialog:selectDir', title),
   selectFile: (title, filters) => ipcRenderer.invoke('dialog:selectFile', title, filters),
+  selectFiles: (title, filters) => ipcRenderer.invoke('dialog:selectFiles', title, filters),
   saveFile: (title, defaultPath, filters) => ipcRenderer.invoke('dialog:saveFile', title, defaultPath, filters),
 
   validate: (dir) => ipcRenderer.invoke('theme:validate', dir),
@@ -18,9 +19,18 @@ contextBridge.exposeInMainWorld('themeAPI', {
   checkList: (file) => ipcRenderer.invoke('list:check', file),
   matchAssets: (listFile, assetDir) => ipcRenderer.invoke('assets:match', listFile, assetDir),
   importAssets: (themeDir, matched, opts) => ipcRenderer.invoke('assets:import', themeDir, matched, opts),
+  importExtras: (themeDir, extras) => ipcRenderer.invoke('extras:import', themeDir, extras),
+  onExtrasProgress: (callback) => {
+    const listener = (_e, p) => callback(p);
+    ipcRenderer.on('extras:import-progress', listener);
+    return () => ipcRenderer.removeListener('extras:import-progress', listener);
+  },
   scanLists: (themeDir) => ipcRenderer.invoke('list:scan', themeDir),
   bindList: (themeDir, listFile) => ipcRenderer.invoke('list:bind', themeDir, listFile),
   coverage: (themeDir, listFile, profile) => ipcRenderer.invoke('list:coverage', themeDir, listFile, profile),
+  launcherGetConfig: (themeDir) => ipcRenderer.invoke('launcher:getConfig', themeDir),
+  launcherSaveConfig: (themeDir, config) => ipcRenderer.invoke('launcher:saveConfig', themeDir, config),
+  launcherSeedBaseline: (themeDir) => ipcRenderer.invoke('launcher:seedBaseline', themeDir),
   onImportProgress: (callback) => {
     const listener = (_e, p) => callback(p);
     ipcRenderer.on('assets:import-progress', listener);

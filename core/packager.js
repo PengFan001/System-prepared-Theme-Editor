@@ -7,6 +7,9 @@
  * 选项：
  *  - keepFormat：保留图片原始格式（默认 false，即全部图片统一转为 webp——这是硬规则；
  *    主题包内不允许出现非 webp 图片，转换需要 sharp）
+ *  - bumpVersion：打包前把 manifest.json 的 version +1 并写回项目（默认 false）。
+ *    规则背景：version 是包版本号，资源更新必须递增，系统凭它识别并应用新资源；
+ *    GUI 与 CLI 默认开启，只有调试/样本回归等场景才用 keepVersion 关闭
  */
 
 const fs = require('fs');
@@ -15,9 +18,23 @@ const archiver = require('archiver');
 const { isImageFile, extOf } = require('./imageInfo');
 
 async function packTheme(themeDir, outFile, opts = {}) {
-  const { keepFormat = false, onProgress = null } = opts;
+  const { keepFormat = false, bumpVersion = false, onProgress = null } = opts;
   const convertToWebp = !keepFormat;
   if (!fs.existsSync(themeDir)) throw new Error(`目录不存在：${themeDir}`);
+
+  // version 递增：写回项目 manifest.json 后再打包，保证包内 manifest 即新版本
+  let version = null;
+  if (bumpVersion) {
+    const mp = path.join(themeDir, 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(mp, 'utf8'));
+    const from = Number(manifest.version);
+    if (!Number.isInteger(from) || from <= 0) {
+      throw new Error(`manifest.version 必须为大于 0 的整数，当前为 ${JSON.stringify(manifest.version)}`);
+    }
+    manifest.version = from + 1;
+    fs.writeFileSync(mp, JSON.stringify(manifest, null, 2) + '\n');
+    version = { from, to: manifest.version };
+  }
 
   let sharp = null;
   if (convertToWebp) {
@@ -68,7 +85,7 @@ async function packTheme(themeDir, outFile, opts = {}) {
 
   await archive.finalize();
   await done;
-  return { outFile, fileCount: entries.length, bytes: fs.statSync(outFile).size };
+  return { outFile, fileCount: entries.length, bytes: fs.statSync(outFile).size, version };
 }
 
 module.exports = { packTheme };

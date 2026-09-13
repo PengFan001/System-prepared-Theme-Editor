@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const P = require('./profiles');
 const { sniff, isImageFile, extOf } = require('./imageInfo');
+const LC = require('./launcherConfig');
 
 function readFileSafe(p) {
   try { return fs.readFileSync(p, 'utf8'); } catch { return null; }
@@ -240,6 +241,29 @@ function validateAppDir(root, errors, warnings) {
   return pkgCount;
 }
 
+/** app/com.transsion.launcher3/values 五件套与字体引用检查（桌面动态功能配置中枢） */
+function validateLauncherValues(root, errors, warnings) {
+  const dir = path.join(root, 'app', 'com.transsion.launcher3');
+  if (!fs.existsSync(dir)) {
+    warnings.push('缺少 app/com.transsion.launcher3/（桌面动态功能配置缺失，动态时钟/动态日历图标将失效）');
+    return;
+  }
+  const vdir = path.join(dir, 'values');
+  const missing = LC.VALUE_FILES.filter(f => !fs.existsSync(path.join(vdir, f)));
+  if (missing.length) {
+    warnings.push(`app/com.transsion.launcher3/values/ 缺少 ${missing.join('、')}（桌面动态功能配置不完整，可在"桌面动态功能配置"面板写入基线）`);
+  }
+  // strings.xml 引用的动态日历字体必须真实存在于 font/
+  const raw = readFileSafe(path.join(vdir, 'strings.xml'));
+  if (raw) {
+    for (const m of raw.matchAll(/<string\s+name="[^"]*"[^>]*>\s*(font\/[^<]+?)\s*<\/string>/g)) {
+      if (!fs.existsSync(path.join(dir, m[1]))) {
+        warnings.push(`app/com.transsion.launcher3/strings.xml 引用的 "${m[1]}" 在 font/ 中不存在（动态日历字体将失效）`);
+      }
+    }
+  }
+}
+
 /** 全包图片检查（icons/ 之外的目录）：格式与内容嗅探，按类别聚合 */
 function validateImagesGlobal(root, errors, warnings) {
   const SKIP_DIRS = new Set(['icons']);
@@ -280,6 +304,7 @@ function validateTheme(themeDir) {
   const previewCount = validatePreview(themeDir, errors, warnings);
   const wallpaperCount = validateWallpapers(themeDir, errors, warnings);
   const appPkgCount = validateAppDir(themeDir, errors, warnings);
+  validateLauncherValues(themeDir, errors, warnings);
   validateImagesGlobal(themeDir, errors, warnings);
 
   if (manifest) {

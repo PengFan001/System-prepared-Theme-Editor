@@ -10,7 +10,8 @@ const { validateTheme } = require('../core/validator');
 const { packTheme } = require('../core/packager');
 const { generateList, loadList, matchAssets, checkList } = require('../core/mapping');
 const { createProject, loadProject, bindList } = require('../core/scaffold');
-const { importAssets, coverage, scanLists } = require('../core/importer');
+const { importAssets, importExtras, coverage, scanLists } = require('../core/importer');
+const { readLauncherConfig, writeLauncherConfig, seedLauncherBaseline } = require('../core/launcherConfig');
 
 // ---- 中文应用菜单 ----
 function buildMenu() {
@@ -112,6 +113,10 @@ ipcMain.handle('dialog:selectFile', async (_e, title, filters) => {
   const r = await dialog.showOpenDialog({ title: title || '选择文件', filters, properties: ['openFile'] });
   return r.canceled ? null : r.filePaths[0];
 });
+ipcMain.handle('dialog:selectFiles', async (_e, title, filters) => {
+  const r = await dialog.showOpenDialog({ title: title || '选择文件', filters, properties: ['openFile', 'multiSelections'] });
+  return r.canceled ? [] : r.filePaths;
+});
 ipcMain.handle('dialog:saveFile', async (_e, title, defaultPath, filters) => {
   const r = await dialog.showSaveDialog({ title: title || '保存', defaultPath, filters });
   return r.canceled ? null : r.filePath;
@@ -119,7 +124,8 @@ ipcMain.handle('dialog:saveFile', async (_e, title, defaultPath, filters) => {
 
 // ---- IPC：core 能力 ----
 ipcMain.handle('theme:validate', (_e, dir) => validateTheme(dir));
-ipcMain.handle('theme:pack', async (_e, dir, out) => packTheme(dir, out));
+// GUI 导出正式包：必须 bumpVersion（资源更新靠 version 递增让系统应用新资源）
+ipcMain.handle('theme:pack', async (_e, dir, out) => packTheme(dir, out, { bumpVersion: true }));
 ipcMain.handle('theme:create', (_e, dir, opts) => createProject(dir, opts));
 ipcMain.handle('theme:loadProject', (_e, dir) => loadProject(dir));
 ipcMain.handle('list:load', (_e, file) => loadList(file));
@@ -133,10 +139,19 @@ ipcMain.handle('assets:import', (e, themeDir, matched, opts) =>
       if (!e.sender.isDestroyed()) e.sender.send('assets:import-progress', { done, total });
     },
   }));
+ipcMain.handle('extras:import', (e, themeDir, extras) =>
+  importExtras(themeDir, extras, {
+    onProgress: (done, total) => {
+      if (!e.sender.isDestroyed()) e.sender.send('extras:import-progress', { done, total });
+    },
+  }));
 ipcMain.handle('list:scan', (_e, themeDir) => scanLists(themeDir));
 ipcMain.handle('list:bind', (_e, themeDir, listFile) => bindList(themeDir, listFile));
 ipcMain.handle('list:coverage', (_e, themeDir, listFile, profile) =>
   coverage(themeDir, loadList(listFile), profile));
+ipcMain.handle('launcher:getConfig', (_e, themeDir) => readLauncherConfig(themeDir));
+ipcMain.handle('launcher:saveConfig', (_e, themeDir, config) => writeLauncherConfig(themeDir, config));
+ipcMain.handle('launcher:seedBaseline', (_e, themeDir) => seedLauncherBaseline(themeDir));
 
 app.whenReady().then(() => {
   buildMenu();

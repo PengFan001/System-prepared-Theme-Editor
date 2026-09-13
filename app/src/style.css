@@ -58,6 +58,13 @@ body {
 
 .dir-line { color: var(--text-dim); font-size: 12px; margin: 8px 0; word-break: break-all; }
 
+/* 桌面动态功能配置面板 */
+.lc-check { display: inline-flex; align-items: center; gap: 6px; min-width: 180px; font-size: 13px; }
+.lc-swatch {
+  display: inline-block; width: 22px; height: 22px;
+  border: 1px solid var(--border); border-radius: 4px; flex-shrink: 0;
+}
+
 .profile { display: flex; gap: 16px; flex-wrap: wrap; margin: 10px 0; }
 .profile .tag {
   padding: 4px 10px; border-radius: 12px; font-size: 12px;

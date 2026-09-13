@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!--全局主题一键清理图标配置start-->
+	<!--全局主题一键清理图标配置end-->
+	<!--动态日历日期字体路径-->
+	<string name="tran_calendar_date_typeface" translatable="false">font/tos_1030_numerals_medium480.ttf</string>
+	<!--动态日历星期字体路径-->
+    <string name="tran_calendar_week_typeface" translatable="false">font/tran_calendar_week_font.ttf</string>
+</resources>

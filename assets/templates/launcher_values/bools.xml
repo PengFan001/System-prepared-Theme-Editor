@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+
+     <!--全局主题三键开关-->
+	 <bool name="is_dynamic_theme_overlay">false</bool>
+	 <!--全局主题资源是否支持拖拽变形功能开关, 默认false-->
+	 <bool name="global_theme_icon_morph_support">true</bool>
+	 <!--全局主题下三键是否刷色，如果为白色的话，需要为true-->
+	 <bool name="is_icon_brush_color">false</bool>
+	 <!-- 决定模拟时钟界面中是否在底部显示分钟刻度 -->
+	 <bool name="analog_clock_draw_minute_bottom">false</bool>
+	 
+	 <!-- 是否支持全球日历功能，影响日历应用的显示和功能 如果不用动态日历填false-->
+	 <bool name="tran_global_calendar_support">true</bool>
+	 <!-- 是否展示日历的星期 如果不用动态日历填false-->
+	 <bool name="transsion_calendar_short_week">true</bool>
+	 <!-- 是否启用星期显示功能，可能影响日历和时钟应用中的星期显示 如果不用动态日历填false -->
+	 <bool name="transsion_calendar_week">true</bool>
+	 <!-- 是否在日历应用中启用渐变效果，影响日历界面的视觉效果  如果不用动态日历填false-->
+	 <bool name="transsion_calendar_gradation">false</bool>
+	 
+</resources>
