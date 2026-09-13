@@ -26,8 +26,11 @@ function run(cmd, args, label) {
 run(process.execPath, [path.join(root, 'node_modules', 'vite', 'bin', 'vite.js'), 'build', '--config', 'app/vite.config.js'], 'vite build');
 
 // 2. electron-builder
+// 显式 --publish never：CI 环境下 electron-builder 会隐式尝试发布到 GitHub Releases
+// （无 GH_TOKEN 时直接报错退出，产物已生成却来不及上传）；本工具只出安装包，从不自动发布
 const ebCli = path.join(root, 'node_modules', 'electron-builder', 'out', 'cli', 'cli.js');
 const extra = process.argv.slice(2);
+if (!extra.includes('--publish')) extra.push('--publish', 'never');
 run(process.execPath, [ebCli, ...extra], 'electron-builder');
 
 console.log('\n构建完成，产物见 release/');
