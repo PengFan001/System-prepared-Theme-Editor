@@ -6,8 +6,11 @@
 
 - **新建项目向导**：选主题类型（完整 / 图标）→ 样式风格（default / glass / foreground_color / mono）→ 图标资源格式 → 品牌（Tecno=HiOS / Infinix=XOS / itel），自动生成标准目录骨架、manifest.json（id 自动生成、prebuilt 锁定 `"1"`）与 description.xml 模板
 - **兜底模板预置**：创建项目时自动放入 `icon_theme_background / foreground / mask` 三张 webp 模板图，防止遗漏
-- **校验器**：manifest 字段、图标命名与分层配对（`_bg` / `_top` / `_monochrome`）、color_mode 与自适应耦合规则、description.xml 一致性、图片格式嗅探（伪装扩展名识别）、尺寸检查
-- **打包器**：目录 → zip → `.xth`；**全包图片强制统一转 webp**（同时改写 description.xml 引用），保证包内零非 webp 图片
+- **桌面动态功能配置**：自动预置 `app/com.transsion.launcher3/values` 五件套与基线字体（动态时钟/日历生效的前提），界面化编辑功能开关、日历颜色与排版
+- **资源导入**：图标（按包名/应用名自动匹配、歧义裁决、进度反馈）、壁纸 / 预览图 / 字体一键归位，SVG 源自动白名单转换为 `_monochrome.xml`
+- **图标预演**：清单行内一键查看图标经系统遮罩后的实际上机效果（双层合成 + 饱和度 + mask 裁切）
+- **校验器**：manifest 字段、图标命名与分层配对（`_bg` / `_top` / `_monochrome`）、color_mode 与自适应耦合规则、description.xml 一致性、图片格式嗅探（伪装扩展名识别）、尺寸检查、launcher 配置与字体引用
+- **打包器**：目录 → zip → `.xth`；**全包图片强制统一转 webp**（同时改写 description.xml 引用），**version 每次导出自动 +1** 并写回项目
 - **适配清单映射**：设计师无需手写包名——按「工具内绑定 / 包名命名 / 应用名命名」三种方式自动归位，含歧义检测与覆盖率报告
 
 ## 主题包格式速览
@@ -39,10 +42,26 @@ npm run dev          # 开发模式（Vite + Electron 联动热更新）
 
 # 命令行（无需界面）
 node core/cli.js validate <主题目录>       # 校验
-node core/cli.js pack <主题目录> <输出.xth> # 打包（强制 webp）
+node core/cli.js pack <主题目录> <输出.xth> # 打包（强制 webp，version 自动 +1；--keep-version 关闭）
 node core/cli.js new <目录> --name 名称 --type 0 --color-mode mono --brand tecno  # 生成项目骨架
 node core/cli.js list:check <清单文件>     # 适配清单体检
 ```
+
+## 分发构建（产出安装包）
+
+```bash
+npm run dist       # 构建前端 + electron-builder，产出到 release/：
+                   #   NSIS 安装包（可选安装目录、桌面快捷方式）
+                   #   便携版 exe（免安装，双击即用）
+npm run dist:dir   # 只产出 win-unpacked 免安装目录（构建快，调试用）
+npm run icon       # 重新生成应用图标 build/icon.png（占位图标，可替换后重新构建）
+```
+
+说明：
+
+- 安装包为 Windows x64；macOS 构建需在 Mac 上执行（`electron-builder --mac`）
+- sharp 原生模块已配置 `asarUnpack`，安装包内可直接读写
+- 构建机如需下载 Electron/NSIS 二进制，已配置 npmmirror 镜像（`electronDownload.mirror` + 环境变量 `ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/`）
 
 ## 适配清单接入（多台电脑 / 新同事上手）
 
@@ -70,14 +89,21 @@ node core/cli.js map lists/adaptation-list.json <素材目录>
 
 ```
 core/       # 业务核心（与 UI 解耦，可独立单测）
-├── profiles.js    # 规则唯一事实来源（命名/尺寸/color_mode/品牌映射）
-├── validator.js   # 校验器
-├── packager.js    # 打包器（zip → .xth，强制 webp）
-├── scaffold.js    # 项目骨架生成
-├── mapping.js     # 适配清单与资源映射
-└── cli.js         # 命令行入口
+├── profiles.js       # 规则唯一事实来源（命名/尺寸/color_mode/品牌映射）
+├── validator.js      # 校验器
+├── packager.js       # 打包器（zip → .xth，强制 webp，version 自动 +1）
+├── scaffold.js       # 项目骨架生成
+├── mapping.js        # 适配清单与资源映射
+├── importer.js       # 资源导入（图标/壁纸/预览图/字体 + 覆盖率）
+├── launcherConfig.js # 桌面动态功能配置读写与基线播种
+├── svg2vd.js         # SVG → VectorDrawable 白名单转换
+├── preview.js        # 图标 mask 合成预演
+└── cli.js            # 命令行入口
 electron/   # Electron 主进程 / 预加载（IPC 包裹 core）
 app/        # Vue 3 + Vite 界面
+assets/     # 随包分发的模板资源（兜底三件套、launcher 基线 XML/字体）
+build/      # 应用图标（npm run icon 重新生成）
+scripts/    # 开发/构建编排与回归测试脚本
 docs/       # 格式规范与设计师交付规范
 ```
 

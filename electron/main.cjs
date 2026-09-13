@@ -75,10 +75,11 @@ function buildMenu() {
             });
           },
         },
-        {
+        // 开发期便捷入口：打包后安装目录为 asar 只读路径，无意义且会失败，故隐藏
+        ...(app.isPackaged ? [] : [{
           label: '打开项目文件夹',
           click: () => shell.openPath(path.join(__dirname, '..')),
-        },
+        }]),
       ],
     },
   ];

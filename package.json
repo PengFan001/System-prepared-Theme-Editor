@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "description": "System-prepared Theme Editor - designer tool for Transsion (Tecno/Infinix/itel) prebuilt themes",
+  "author": "PengFan001",
+  "license": "UNLICENSED",
   "type": "commonjs",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "node scripts/dev.js",
     "build": "vite build --config app/vite.config.js",
     "start": "npm run build && electron .",
+    "dist": "node scripts/dist.js",
+    "dist:dir": "node scripts/dist.js --dir",
+    "icon": "node scripts/gen-icon.js",
     "validate": "node core/cli.js validate",
     "pack": "node core/cli.js pack"
   },
@@ -20,6 +25,47 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
     "electron": "^33.2.1",
+    "electron-builder": "^26.0.12",
     "vite": "^6.0.7"
+  },
+  "build": {
+    "appId": "com.pengfan001.systempreparedthemeeditor",
+    "productName": "System-prepared Theme Editor",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "release"
+    },
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    },
+    "files": [
+      "package.json",
+      "electron/**",
+      "app/dist/**",
+      "core/**",
+      "assets/**"
+    ],
+    "asarUnpack": [
+      "**/node_modules/sharp/**",
+      "**/node_modules/@img/**"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Theme Editor"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    }
   }
 }
