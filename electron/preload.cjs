@@ -21,6 +21,11 @@ contextBridge.exposeInMainWorld('themeAPI', {
   scanLists: (themeDir) => ipcRenderer.invoke('list:scan', themeDir),
   bindList: (themeDir, listFile) => ipcRenderer.invoke('list:bind', themeDir, listFile),
   coverage: (themeDir, listFile, profile) => ipcRenderer.invoke('list:coverage', themeDir, listFile, profile),
+  onImportProgress: (callback) => {
+    const listener = (_e, p) => callback(p);
+    ipcRenderer.on('assets:import-progress', listener);
+    return () => ipcRenderer.removeListener('assets:import-progress', listener);
+  },
 
   // 菜单事件订阅：channel 只允许白名单内的菜单事件
   onMenu: (channel, callback) => {

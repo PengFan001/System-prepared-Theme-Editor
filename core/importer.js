@@ -34,7 +34,7 @@ function targetName(pkg, layer, iconStyle) {
  * @returns {Promise<{placed, overwritten, pendingSvg, errors}>}
  */
 async function importAssets(themeDir, matched, opts) {
-  const { iconStyle, assetDir } = opts;
+  const { iconStyle, assetDir, onProgress = null } = opts;
   if (!iconStyle) throw new Error('缺少 iconStyle（normal/adaptive）');
   const iconsDir = path.join(themeDir, 'icons');
   fs.mkdirSync(iconsDir, { recursive: true });
@@ -47,7 +47,11 @@ async function importAssets(themeDir, matched, opts) {
   const pendingSvg = [];  // { file, target, package }
   const errors = [];      // string
 
+  let done = 0;
+  const total = matched.length;
   for (const m of matched) {
+    done++;
+    if (onProgress) onProgress(done, total, m.file);
     const src = path.join(assetDir, m.file);
     const isSvg = m.file.toLowerCase().endsWith('.svg');
     try {

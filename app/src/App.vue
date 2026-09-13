@@ -249,9 +249,18 @@
           <button class="btn primary" :disabled="!importPlan.length || importing" @click="doImport">
             {{ importing ? '导入中…' : `导入 ${importPlan.length} 项到 icons/` }}
           </button>
-          <button class="btn" @click="match = null">取消</button>
+          <button class="btn" :disabled="importing" @click="match = null">取消</button>
+        </div>
+
+        <div v-if="importing && importProgress" class="import-progress">
+          <div class="cov-bar">
+            <div class="cov-full" :style="{ width: importProgress.total ? (importProgress.done / importProgress.total * 100) + '%' : '0%' }"></div>
+          </div>
+          <div class="stats">正在导入 {{ importProgress.done }} / {{ importProgress.total }}（完成后自动刷新校验与覆盖率）</div>
         </div>
       </template>
+
+      <div v-if="importError" class="issue error" style="margin-top:10px">[导入失败] {{ importError }}</div>
 
       <div v-if="importResult" class="sub-block">
         <h3>导入结果</h3>
@@ -261,6 +270,7 @@
           <template v-if="importResult.pendingSvg.length"> · SVG 暂存 {{ importResult.pendingSvg.length }}（待 P2 转 monochrome）</template>
           <template v-if="importResult.errors.length"> · 失败 {{ importResult.errors.length }}</template>
         </div>
+        <div v-if="!importResult.errors.length" class="ok-line">全部导入成功，已写入 icons/ 目录，校验与覆盖率已刷新。</div>
         <div class="issue-list">
           <div v-for="(e, i) in importResult.errors" :key="'ie' + i" class="issue error">[失败] {{ e }}</div>
         </div>
@@ -445,13 +455,21 @@ const filteredApps = computed(() => {
 });
 
 async function initList() {
-  listFiles.value = await window.themeAPI.scanLists(dir.value);
-  const bound = projectMeta.value && projectMeta.value.listFile;
-  listFile.value = bound || (listFiles.value.length ? listFiles.value[0] : null);
-  if (listFile.value) {
-    if (!bound) await window.themeAPI.bindList(dir.value, listFile.value);
-    await refreshCoverage();
-  } else {
+  // 清单功能失败（如 IPC 不可用）不阻断项目打开，降级为无清单模式
+  try {
+    listFiles.value = await window.themeAPI.scanLists(dir.value);
+    const bound = projectMeta.value && projectMeta.value.listFile;
+    listFile.value = bound || (listFiles.value.length ? listFiles.value[0] : null);
+    if (listFile.value) {
+      if (!bound) await window.themeAPI.bindList(dir.value, listFile.value);
+      await refreshCoverage();
+    } else {
+      cov.value = null;
+    }
+  } catch (e) {
+    console.warn('清单初始化失败，已降级为无清单模式：', e);
+    listFiles.value = [];
+    listFile.value = null;
     cov.value = null;
   }
 }
@@ -476,10 +494,15 @@ async function pickListFile() {
 
 async function refreshCoverage() {
   if (!listFile.value || !report.value) return;
-  cov.value = await window.themeAPI.coverage(dir.value, listFile.value, {
-    iconStyle: report.value.profile.iconStyle,
-    colorMode: report.value.profile.colorMode,
-  });
+  try {
+    cov.value = await window.themeAPI.coverage(dir.value, listFile.value, {
+      iconStyle: report.value.profile.iconStyle,
+      colorMode: report.value.profile.colorMode,
+    });
+  } catch (e) {
+    console.warn('覆盖率计算失败：', e);
+    cov.value = null;
+  }
 }
 
 // ---------- 资源导入 ----------
@@ -490,6 +513,8 @@ const cfChoices = ref({});
 const sgChoices = ref({});
 const importing = ref(false);
 const importResult = ref(null);
+const importError = ref('');
+const importProgress = ref(null); // { done, total } | null
 
 function resetImport() {
   assetDir.value = '';
@@ -498,6 +523,8 @@ function resetImport() {
   cfChoices.value = {};
   sgChoices.value = {};
   importResult.value = null;
+  importError.value = '';
+  importProgress.value = null;
 }
 
 async function pickAssetDir() {
@@ -556,8 +583,12 @@ const importPlan = computed(() => {
 
 async function doImport() {
   importing.value = true;
+  importError.value = '';
+  importProgress.value = { done: 0, total: importPlan.value.length };
   try {
-    importResult.value = await window.themeAPI.importAssets(dir.value, importPlan.value, {
+    // importPlan 内含 Vue 响应式 Proxy，Electron IPC 无法克隆，必须先深拷贝为纯对象
+    const plan = JSON.parse(JSON.stringify(importPlan.value));
+    importResult.value = await window.themeAPI.importAssets(dir.value, plan, {
       iconStyle: report.value.profile.iconStyle,
       assetDir: assetDir.value,
     });
@@ -565,8 +596,11 @@ async function doImport() {
     // 导入后联动：重跑校验 + 覆盖率
     report.value = await window.themeAPI.validate(dir.value);
     await refreshCoverage();
+  } catch (e) {
+    importError.value = String(e.message || e);
   } finally {
     importing.value = false;
+    importProgress.value = null;
   }
 }
 
@@ -578,6 +612,7 @@ onMounted(() => {
   unsubs.push(window.themeAPI.onMenu('menu:export', () => {
     if (view.value === 'project' && dir.value && !packing.value) doPack();
   }));
+  unsubs.push(window.themeAPI.onImportProgress(p => { importProgress.value = p; }));
 });
 onUnmounted(() => unsubs.forEach(u => u && u()));
 </script>
