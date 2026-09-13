@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('themeAPI', {
   launcherGetConfig: (themeDir) => ipcRenderer.invoke('launcher:getConfig', themeDir),
   launcherSaveConfig: (themeDir, config) => ipcRenderer.invoke('launcher:saveConfig', themeDir, config),
   launcherSeedBaseline: (themeDir) => ipcRenderer.invoke('launcher:seedBaseline', themeDir),
+  iconPreview: (themeDir, pkg) => ipcRenderer.invoke('icon:preview', themeDir, pkg),
   onImportProgress: (callback) => {
     const listener = (_e, p) => callback(p);
     ipcRenderer.on('assets:import-progress', listener);

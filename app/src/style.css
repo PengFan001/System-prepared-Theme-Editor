@@ -164,3 +164,17 @@ body {
 .confirm-row .app-name { min-width: 260px; }
 
 .import-progress { margin-top: 10px; padding: 10px; border-radius: 6px; background: #f8fafc; }
+
+/* 图标 mask 预演 */
+.icon-preview {
+  display: flex; gap: 14px; align-items: flex-start;
+  margin: 10px 0; padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: #f8fafc;
+}
+.icon-preview-img {
+  width: 108px; height: 108px; border-radius: 8px; flex: none;
+  background: repeating-conic-gradient(#e5e7eb 0 25%, #fff 0 50%) 0 0 / 16px 16px;
+  image-rendering: auto;
+}
+.icon-preview-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.btn.mini { padding: 2px 8px; font-size: 12px; }

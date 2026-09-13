@@ -176,6 +176,21 @@
           </select>
         </div>
 
+        <div v-if="iconPreview" class="icon-preview">
+          <img v-if="iconPreview.dataUrl" :src="iconPreview.dataUrl" class="icon-preview-img" alt="预演" />
+          <div class="icon-preview-info">
+            <b>{{ iconPreview.name || iconPreview.package }}</b>
+            <span class="app-pkg">{{ iconPreview.package }}</span>
+            <span v-if="iconPreview.loading" class="form-note">合成中…</span>
+            <span v-else-if="iconPreview.error" class="issue error" style="display:block">{{ iconPreview.error }}</span>
+            <template v-else>
+              <span class="form-note">系统遮罩后的实际上机效果（{{ iconPreview.mode === 'adaptive' ? '自适应双层' : '模板合成' }}）</span>
+              <span v-for="(n, i) in iconPreview.notes" :key="i" class="issue warn" style="display:block">{{ n }}</span>
+            </template>
+          </div>
+          <button class="btn" @click="iconPreview = null">关闭</button>
+        </div>
+
         <div class="app-table">
           <div v-for="a in filteredApps" :key="a.package" class="app-row">
             <span class="app-status" :class="a.status">{{ statusLabel(a.status) }}</span>
@@ -183,6 +198,7 @@
             <span class="app-pkg">{{ a.package }}</span>
             <span class="app-cat">{{ catLabel(a.category) }}</span>
             <span class="app-missing">{{ a.status !== 'full' ? '缺：' + a.missing.join('、') : '' }}</span>
+            <button v-if="a.status !== 'none'" class="btn mini" @click="showIconPreview(a)">预演</button>
           </div>
           <div v-if="!filteredApps.length" class="form-note">没有符合条件的条目</div>
         </div>
@@ -267,11 +283,16 @@
         <div class="stats">
           成功 {{ importResult.placed.length }}
           <template v-if="importResult.overwritten.length"> · 覆盖 {{ importResult.overwritten.length }}</template>
-          <template v-if="importResult.pendingSvg.length"> · SVG 暂存 {{ importResult.pendingSvg.length }}（待 P2 转 monochrome）</template>
+          <template v-if="importResult.convertedMono && importResult.convertedMono.length"> · SVG 转 monochrome {{ importResult.convertedMono.length }}</template>
+          <template v-if="importResult.pendingSvg.length"> · SVG 暂存 {{ importResult.pendingSvg.length }}</template>
           <template v-if="importResult.errors.length"> · 失败 {{ importResult.errors.length }}</template>
         </div>
         <div v-if="!importResult.errors.length" class="ok-line">全部导入成功，已写入 icons/ 目录，校验与覆盖率已刷新。</div>
         <div class="issue-list">
+          <template v-for="(cm, i) in (importResult.convertedMono || [])" :key="'cm' + i">
+            <div v-for="(w, j) in cm.warnings" :key="'cmw' + i + '-' + j" class="issue warn">[monochrome] {{ cm.file }}：{{ w }}</div>
+          </template>
+          <div v-for="(ps, i) in importResult.pendingSvg" :key="'ps' + i" class="issue warn">[SVG 暂存] {{ ps.file }} → {{ ps.target }}<template v-if="ps.reason">（{{ ps.reason }}）</template></div>
           <div v-for="(e, i) in importResult.errors" :key="'ie' + i" class="issue error">[失败] {{ e }}</div>
         </div>
       </div>
@@ -750,6 +771,7 @@ async function doImport() {
     const plan = JSON.parse(JSON.stringify(importPlan.value));
     importResult.value = await window.themeAPI.importAssets(dir.value, plan, {
       iconStyle: report.value.profile.iconStyle,
+      colorMode: report.value.profile.colorMode,
       assetDir: assetDir.value,
     });
     match.value = null;
@@ -902,6 +924,18 @@ async function doSaveLauncherConfig() {
     lcError.value = String(e.message || e);
   } finally {
     lcSaving.value = false;
+  }
+}
+
+// ---------- 图标 mask 预演 ----------
+const iconPreview = ref(null); // null 或 { package, name, dataUrl, mode, notes, loading, error }
+async function showIconPreview(a) {
+  iconPreview.value = { package: a.package, name: a.name, dataUrl: null, mode: '', notes: [], loading: true, error: '' };
+  try {
+    const r = await window.themeAPI.iconPreview(dir.value, a.package);
+    iconPreview.value = { ...iconPreview.value, dataUrl: r.dataUrl, mode: r.mode, notes: r.notes, loading: false };
+  } catch (e) {
+    iconPreview.value = { ...iconPreview.value, loading: false, error: String(e.message || e) };
   }
 }
 

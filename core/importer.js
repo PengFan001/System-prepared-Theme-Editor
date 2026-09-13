@@ -5,7 +5,8 @@
  *  - importAssets(themeDir, matched, opts)：按主题图标风格归位命名
  *      normal   → icons/<包名>.webp
  *      adaptive → icons/<包名>_bg.webp / icons/<包名>_top.webp
- *      mono     → 同上 + SVG 暂存 icons/_pending_svg/（VectorDrawable 转换属 P2）
+ *      mono     → 同上 + SVG 经 svg2vd 白名单转换 → icons/<包名>_monochrome.xml；
+ *                 转换失败降级暂存 icons/_pending_svg/ 并记录原因
  *    源图统一转 webp（sharp），与设计规范「包内产物一律 webp」对齐
  *  - coverage(themeDir, list, profile)：按清单逐应用统计适配状态，
  *    供覆盖率报告与清单面板使用
@@ -13,6 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { convertSvgToVd } = require('./svg2vd');
 
 const PENDING_SVG_DIR = '_pending_svg';
 
@@ -31,7 +33,7 @@ function targetName(pkg, layer, iconStyle) {
  * @param {string} themeDir 主题项目目录
  * @param {Array} matched matchAssets 返回的 matched（可含人工裁决后的条目）
  * @param {object} opts { iconStyle: 'normal'|'adaptive', assetDir, overwrite?: true }
- * @returns {Promise<{placed, overwritten, pendingSvg, errors}>}
+ * @returns {Promise<{placed, overwritten, convertedMono, pendingSvg, errors}>}
  */
 async function importAssets(themeDir, matched, opts) {
   const { iconStyle, assetDir, onProgress = null } = opts;
@@ -42,10 +44,11 @@ async function importAssets(themeDir, matched, opts) {
   let sharp = null;
   try { sharp = require('sharp'); } catch { /* 退化：直接复制原格式 */ }
 
-  const placed = [];      // { file, target, layer, package }
-  const overwritten = []; // [target]
-  const pendingSvg = [];  // { file, target, package }
-  const errors = [];      // string
+  const placed = [];       // { file, target, layer, package }
+  const overwritten = [];  // [target]
+  const convertedMono = []; // { file, target, package, warnings }
+  const pendingSvg = [];   // { file, target, package, reason }
+  const errors = [];       // string
 
   let done = 0;
   const total = matched.length;
@@ -56,12 +59,34 @@ async function importAssets(themeDir, matched, opts) {
     const isSvg = m.file.toLowerCase().endsWith('.svg');
     try {
       if (isSvg || m.layer === 'mono') {
-        // SVG → VectorDrawable 属于 P2 能力，先暂存不丢失
-        const dir = path.join(iconsDir, PENDING_SVG_DIR);
-        fs.mkdirSync(dir, { recursive: true });
-        const target = path.join(PENDING_SVG_DIR, `${m.package}.svg`);
-        fs.copyFileSync(src, path.join(iconsDir, target));
-        pendingSvg.push({ file: m.file, target, package: m.package });
+        if (!isSvg) {
+          errors.push(`${m.file}：monochrome 图层仅接受 SVG 源文件`);
+          continue;
+        }
+        // 非 mono 主题不需要 _monochrome.xml，暂存并说明，不浪费设计师的 SVG
+        if (opts.colorMode && opts.colorMode !== 'mono') {
+          const dir = path.join(iconsDir, PENDING_SVG_DIR);
+          fs.mkdirSync(dir, { recursive: true });
+          const target = path.join(PENDING_SVG_DIR, `${m.package}.svg`);
+          fs.copyFileSync(src, path.join(iconsDir, target));
+          pendingSvg.push({ file: m.file, target, package: m.package, reason: '当前主题 color_mode 不是 mono，_monochrome.xml 不会生效，已暂存' });
+          continue;
+        }
+        // SVG → VectorDrawable（白名单转换）；失败降级暂存 _pending_svg 不丢文件
+        const svgText = fs.readFileSync(src, 'utf8');
+        const r = convertSvgToVd(svgText);
+        if (r.ok) {
+          const name = `${m.package}_monochrome.xml`;
+          if (fs.existsSync(path.join(iconsDir, name))) overwritten.push(name);
+          fs.writeFileSync(path.join(iconsDir, name), r.xml);
+          convertedMono.push({ file: m.file, target: name, package: m.package, warnings: r.warnings });
+        } else {
+          const dir = path.join(iconsDir, PENDING_SVG_DIR);
+          fs.mkdirSync(dir, { recursive: true });
+          const target = path.join(PENDING_SVG_DIR, `${m.package}.svg`);
+          fs.copyFileSync(src, path.join(iconsDir, target));
+          pendingSvg.push({ file: m.file, target, package: m.package, reason: r.reason });
+        }
         continue;
       }
       const name = targetName(m.package, m.layer, iconStyle);
@@ -80,7 +105,7 @@ async function importAssets(themeDir, matched, opts) {
       errors.push(`${m.file}：${e.message}`);
     }
   }
-  return { placed, overwritten, pendingSvg, errors };
+  return { placed, overwritten, convertedMono, pendingSvg, errors };
 }
 
 /**

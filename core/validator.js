@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const P = require('./profiles');
 const { sniff, isImageFile, extOf } = require('./imageInfo');
+const { checkMonochromeXml } = require('./svg2vd');
 const LC = require('./launcherConfig');
 
 function readFileSafe(p) {
@@ -142,9 +143,9 @@ function validateIcons(root, manifest, errors, warnings) {
       if (!isMono && g.mono) warnings.push(`icons/${base}：存在 _monochrome.xml 但 manifest.color_mode 不是 mono`);
       if (g.mono) {
         const raw = readFileSafe(path.join(iconsDir, g.mono)) || '';
-        if (!raw.includes('<vector') || !raw.includes('pathData')) {
-          errors.push(`icons/${g.mono}：不是合法的 VectorDrawable（应包含 <vector> 与 pathData）`);
-        }
+        const mc = checkMonochromeXml(raw);
+        for (const issue of mc.errors) errors.push(`icons/${g.mono}：${issue}`);
+        for (const issue of mc.warnings) warnings.push(`icons/${g.mono}：${issue}`);
       }
     }
   } else {

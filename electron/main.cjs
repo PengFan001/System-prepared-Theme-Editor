@@ -11,6 +11,7 @@ const { packTheme } = require('../core/packager');
 const { generateList, loadList, matchAssets, checkList } = require('../core/mapping');
 const { createProject, loadProject, bindList } = require('../core/scaffold');
 const { importAssets, importExtras, coverage, scanLists } = require('../core/importer');
+const { composeIconPreview } = require('../core/preview');
 const { readLauncherConfig, writeLauncherConfig, seedLauncherBaseline } = require('../core/launcherConfig');
 
 // ---- 中文应用菜单 ----
@@ -152,6 +153,7 @@ ipcMain.handle('list:coverage', (_e, themeDir, listFile, profile) =>
 ipcMain.handle('launcher:getConfig', (_e, themeDir) => readLauncherConfig(themeDir));
 ipcMain.handle('launcher:saveConfig', (_e, themeDir, config) => writeLauncherConfig(themeDir, config));
 ipcMain.handle('launcher:seedBaseline', (_e, themeDir) => seedLauncherBaseline(themeDir));
+ipcMain.handle('icon:preview', (_e, themeDir, pkg) => composeIconPreview(themeDir, pkg));
 
 app.whenReady().then(() => {
   buildMenu();
